@@ -1,0 +1,43 @@
+# Build artifacts
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+
+# IDE settings
+.vs/
+.vscode/
+.idea/
+
+# Test and coverage outputs
+TestResults/
+*.coverage
+*.coveragexml
+coverage/
+
+# Logs
+*.log
+logs/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Environment and local config overrides
+.env
+.env.*
+appsettings.Local.json
+appsettings.*.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
