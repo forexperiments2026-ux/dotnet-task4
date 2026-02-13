@@ -81,25 +81,7 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
         user.LastLoginAt = DateTime.UtcNow;
         user.LastActivityAt = user.LastLoginAt;
         await dbContext.SaveChangesAsync();
-
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Name),
-            new(ClaimTypes.Email, user.Email),
-            new("user_status", user.Status.ToString())
-        };
-        var identity = new ClaimsIdentity(claims, AppAuthConstants.Scheme);
-        var principal = new ClaimsPrincipal(identity);
-
-        await HttpContext.SignInAsync(
-            AppAuthConstants.Scheme,
-            principal,
-            new AuthenticationProperties
-            {
-                IsPersistent = model.RememberMe,
-                AllowRefresh = true
-            });
+        await SignInUserAsync(user, model.RememberMe);
 
         if (!string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
         {
@@ -139,6 +121,7 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
             Email = model.Email.Trim(),
             Status = UserStatus.unverified,
             CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow,
             LastActivityAt = DateTime.UtcNow
         };
         user.PasswordHash = passwordHasher.HashPassword(user, model.Password);
@@ -159,15 +142,9 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
             return View(model);
         }
 
-        TempData["RegistrationStatus"] = "Registration completed. Confirmation e-mail is queued and will be sent asynchronously.";
-        TempData["RegisteredEmail"] = user.Email;
-        return RedirectToAction(nameof(RegistrationSuccess));
-    }
-
-    [AllowAnonymous]
-    public IActionResult RegistrationSuccess()
-    {
-        return View();
+        await SignInUserAsync(user, false);
+        TempData["StatusSuccess"] = "Registration completed. Confirmation e-mail is queued and will be sent asynchronously.";
+        return RedirectToAction("Index", "Users");
     }
 
     private async Task<User?> GetCurrentUserAsync()
@@ -186,5 +163,27 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
         return exception.InnerException is PostgresException postgresException
             && postgresException.SqlState == PostgresErrorCodes.UniqueViolation
             && string.Equals(postgresException.ConstraintName, "ux_users_email", StringComparison.Ordinal);
+    }
+
+    private async Task SignInUserAsync(User user, bool isPersistent)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Name),
+            new(ClaimTypes.Email, user.Email),
+            new("user_status", user.Status.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, AppAuthConstants.Scheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(
+            AppAuthConstants.Scheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = isPersistent,
+                AllowRefresh = true
+            });
     }
 }
