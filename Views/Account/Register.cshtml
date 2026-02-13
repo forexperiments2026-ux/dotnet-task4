@@ -1,10 +1,11 @@
 @model Task4.Models.RegisterViewModel
 @{
     ViewData["Title"] = "Register";
+    ViewData["AuthLayout"] = true;
 }
 
-<section class="auth-page mx-auto" style="max-width: 560px;">
-    <div class="card shadow-sm">
+<section class="register-screen">
+    <div class="card shadow-sm register-card">
         <div class="card-body p-4 p-md-5">
             <h1 class="h4 mb-3">Create account</h1>
             <p class="text-secondary">Пользователь регистрируется сразу, подтверждение e-mail отправляется асинхронно.</p>
