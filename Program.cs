@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Task4.Data;
 using Task4.Data.Models;
+using Task4.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,14 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddAuthentication(AppAuthConstants.Scheme)
+    .AddCookie(AppAuthConstants.Scheme, options =>
+    {
+        options.LoginPath = "/Mockups/Login";
+        options.AccessDeniedPath = "/Mockups/Login";
+        options.SlidingExpiration = true;
+    });
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -35,6 +44,7 @@ else
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();

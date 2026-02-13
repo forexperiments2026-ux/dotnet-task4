@@ -1,10 +1,14 @@
 @{
     ViewData["Title"] = "Registration success";
+    var registrationStatus = TempData["RegistrationStatus"] as string;
+    var registeredEmail = TempData["RegisteredEmail"] as string;
 }
 
 <section class="status-page mx-auto" style="max-width: 720px;">
     <div class="alert alert-success shadow-sm" role="status">
-        Registration completed. Confirmation e-mail is queued and will be sent asynchronously.
+        @(string.IsNullOrWhiteSpace(registrationStatus)
+            ? "Registration completed. Confirmation e-mail is queued and will be sent asynchronously."
+            : registrationStatus)
     </div>
 
     <div class="card shadow-sm">
@@ -12,6 +16,10 @@
             <h1 class="h4">Что видит пользователь после регистрации</h1>
             <ul class="mb-0">
                 <li>Аккаунт создан сразу со статусом <strong>unverified</strong>.</li>
+                @if (!string.IsNullOrWhiteSpace(registeredEmail))
+                {
+                    <li>Зарегистрированный e-mail: <strong>@registeredEmail</strong>.</li>
+                }
                 <li>Пользователь уже может войти в систему.</li>
                 <li>Переход по ссылке из e-mail меняет статус на <strong>active</strong>.</li>
             </ul>

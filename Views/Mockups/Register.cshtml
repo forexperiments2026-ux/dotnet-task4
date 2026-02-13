@@ -1,5 +1,6 @@
+@model Task4.Models.RegisterViewModel
 @{
-    ViewData["Title"] = "Register mockup";
+    ViewData["Title"] = "Register";
 }
 
 <section class="auth-page mx-auto" style="max-width: 560px;">
@@ -8,28 +9,34 @@
             <h1 class="h4 mb-3">Create account</h1>
             <p class="text-secondary">Пользователь регистрируется сразу, подтверждение e-mail отправляется асинхронно.</p>
 
-            <form>
+            <form method="post" asp-controller="Mockups" asp-action="Register" novalidate>
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="firstName">First name</label>
-                        <input id="firstName" class="form-control" type="text" placeholder="Anna" />
+                        <label class="form-label" asp-for="FirstName">First name</label>
+                        <input asp-for="FirstName" class="form-control" type="text" placeholder="Anna" autocomplete="given-name" />
+                        <span asp-validation-for="FirstName" class="text-danger small"></span>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="lastName">Last name</label>
-                        <input id="lastName" class="form-control" type="text" placeholder="Keller" />
+                        <label class="form-label" asp-for="LastName">Last name</label>
+                        <input asp-for="LastName" class="form-control" type="text" placeholder="Keller" autocomplete="family-name" />
+                        <span asp-validation-for="LastName" class="text-danger small"></span>
                     </div>
                     <div class="col-12">
-                        <label class="form-label" for="registerEmail">Email</label>
-                        <input id="registerEmail" class="form-control" type="email" placeholder="anna.keller@company.com" />
+                        <label class="form-label" asp-for="Email">Email</label>
+                        <input asp-for="Email" class="form-control" type="email" placeholder="anna.keller@company.com" autocomplete="email" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
                         <div class="form-text">Уникальность e-mail гарантируется unique index в БД.</div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label" for="registerPassword">Password</label>
-                        <input id="registerPassword" class="form-control" type="password" placeholder="Any non-empty password" />
+                        <label class="form-label" asp-for="Password">Password</label>
+                        <input asp-for="Password" class="form-control" type="password" placeholder="Any non-empty password" autocomplete="new-password" />
+                        <span asp-validation-for="Password" class="text-danger small"></span>
                     </div>
                 </div>
                 <div class="d-grid mt-4">
-                    <button class="btn btn-primary" type="button">Register</button>
+                    <button class="btn btn-primary" type="submit">Register</button>
                 </div>
             </form>
 
@@ -40,3 +47,7 @@
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

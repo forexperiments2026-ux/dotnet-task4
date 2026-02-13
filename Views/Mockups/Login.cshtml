@@ -1,5 +1,7 @@
+@model Task4.Models.LoginViewModel
 @{
-    ViewData["Title"] = "Login mockup";
+    ViewData["Title"] = "Login";
+    var statusError = TempData["StatusError"] as string;
 }
 
 <section class="auth-page mx-auto" style="max-width: 480px;">
@@ -8,20 +10,30 @@
             <h1 class="h4 mb-3 text-center">Sign in</h1>
             <p class="text-center text-secondary mb-4">Доступ к панели управления пользователями</p>
 
-            <div class="alert alert-info" role="status">
-                Example status message: your account is unverified, but login is available.
-            </div>
+            @if (!string.IsNullOrWhiteSpace(statusError))
+            {
+                <div class="alert alert-danger" role="status">@statusError</div>
+            }
 
-            <form>
+            <form method="post" asp-controller="Mockups" asp-action="Login" novalidate>
+                @Html.AntiForgeryToken()
+                <input asp-for="ReturnUrl" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
                 <div class="mb-3">
-                    <label class="form-label" for="email">Email</label>
-                    <input id="email" class="form-control" type="email" placeholder="name@company.com" />
+                    <label class="form-label" asp-for="Email"></label>
+                    <input asp-for="Email" class="form-control" type="email" placeholder="name@company.com" autocomplete="username" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="password">Password</label>
-                    <input id="password" class="form-control" type="password" placeholder="Enter password" />
+                    <label class="form-label" asp-for="Password"></label>
+                    <input asp-for="Password" class="form-control" type="password" placeholder="Enter password" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
                 </div>
-                <button class="btn btn-primary w-100" type="button">Login</button>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" asp-for="RememberMe" />
+                    <label class="form-check-label" asp-for="RememberMe">Remember me</label>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">Login</button>
             </form>
 
             <div class="d-flex justify-content-between align-items-center mt-4 small">
@@ -31,3 +43,7 @@
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
