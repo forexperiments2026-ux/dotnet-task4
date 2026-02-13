@@ -30,8 +30,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=app_db;Username=app_user;Password=app_password
+      DATA_PROTECTION_KEYS_PATH: /var/data/dpkeys
     ports:
       - "8080:8080"
+    volumes:
+      - dp-keys:/var/data/dpkeys
 
 volumes:
   pg-data:
+  dp-keys:

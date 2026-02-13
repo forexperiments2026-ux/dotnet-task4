@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Task4.Data;
 using Task4.Data.Models;
@@ -14,6 +15,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         npgsqlOptions.MapEnum<UserStatus>("user_status", "app")));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("Task4");
+
+var dataProtectionKeysPath = builder.Configuration["DATA_PROTECTION_KEYS_PATH"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    Directory.CreateDirectory(dataProtectionKeysPath);
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+
 builder.Services.AddAuthentication(AppAuthConstants.Scheme)
     .AddCookie(AppAuthConstants.Scheme, options =>
     {
@@ -25,6 +37,7 @@ builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+var isRender = string.Equals(app.Configuration["RENDER"], "true", StringComparison.OrdinalIgnoreCase);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -38,7 +51,10 @@ else
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+if (!isRender)
+{
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
 
 app.UseAuthentication();
