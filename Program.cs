@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Task4.Data;
 using Task4.Data.Models;
+using Task4.Middleware;
 using Task4.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication();
+app.UseMiddleware<UserAccessValidationMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();

@@ -52,11 +52,11 @@
                             </th>
                             <th scope="col">Name</th>
                             <th scope="col">E-mail</th>
+                            <th scope="col">Status</th>
                             <th scope="col">
-                                Last login
+                                Last seen
                                 <span class="text-secondary">↓</span>
                             </th>
-                            <th scope="col">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,8 +75,8 @@
                                 </td>
                                 <td>@user.Name</td>
                                 <td>@user.Email</td>
-                                <td class="text-nowrap">@user.LastActivity</td>
                                 <td><span class="badge @badgeClass">@user.Status</span></td>
+                                <td class="text-nowrap">@user.LastActivity</td>
                             </tr>
                         }
                     </tbody>

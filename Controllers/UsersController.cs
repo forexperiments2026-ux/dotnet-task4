@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +13,6 @@ public class UsersController(AppDbContext dbContext) : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? searchQuery)
     {
-        var redirect = await ValidateCurrentUserAccessAsync();
-        if (redirect is not null)
-        {
-            return redirect;
-        }
-
         var normalizedSearchQuery = searchQuery?.Trim() ?? string.Empty;
 
         var usersQuery = dbContext.Users.AsNoTracking();
@@ -62,12 +54,6 @@ public class UsersController(AppDbContext dbContext) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Index(string operation, List<long>? selectedIds, string? searchQuery)
     {
-        var redirect = await ValidateCurrentUserAccessAsync();
-        if (redirect is not null)
-        {
-            return redirect;
-        }
-
         var ids = selectedIds ?? [];
         var normalizedOperation = operation?.Trim().ToLowerInvariant();
         var affected = 0;
@@ -126,31 +112,5 @@ public class UsersController(AppDbContext dbContext) : Controller
         }
 
         return RedirectToAction(nameof(Index), new { searchQuery });
-    }
-
-    private async Task<User?> GetCurrentUserAsync()
-    {
-        var userIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!long.TryParse(userIdRaw, out var userId))
-        {
-            return null;
-        }
-
-        return await dbContext.Users.SingleOrDefaultAsync(x => x.Id == userId);
-    }
-
-    private async Task<IActionResult?> ValidateCurrentUserAccessAsync()
-    {
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null || currentUser.Status == UserStatus.blocked)
-        {
-            await HttpContext.SignOutAsync(AppAuthConstants.Scheme);
-            TempData["StatusError"] = "Your session is no longer valid. Please sign in again.";
-            return RedirectToAction("Login", "Account");
-        }
-
-        currentUser.LastActivityAt = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync();
-        return null;
     }
 }
