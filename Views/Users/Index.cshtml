@@ -9,7 +9,6 @@
     <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-3">
         <div>
             <h1 class="h4 mb-1">User management</h1>
-            <p class="text-secondary mb-0">Sortable table with toolbar, checkboxes and status messages.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <span class="badge text-bg-light border">Total: @Model.TotalUsers</span>
@@ -36,7 +35,10 @@
                 <button class="btn btn-outline-secondary btn-sm toolbar-selection-action" type="submit" name="operation" value="unblock" title="Unblock selected users" data-bs-toggle="tooltip" data-bs-placement="bottom">🔓</button>
                 <button class="btn btn-outline-secondary btn-sm toolbar-selection-action" type="submit" name="operation" value="delete" title="Delete selected users" data-bs-toggle="tooltip" data-bs-placement="bottom">🗑</button>
                 <button class="btn btn-outline-secondary btn-sm" type="submit" name="operation" value="delete-unverified" title="Delete all unverified users" data-bs-toggle="tooltip" data-bs-placement="bottom">🧹</button>
-                <span class="ms-auto text-secondary small">No row-level buttons. Actions only in the toolbar.</span>
+                <input type="hidden" name="searchQuery" value="@Model.SearchQuery" />
+                <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+                    <input id="usersSearchQuery" class="form-control form-control-sm" type="search" value="@Model.SearchQuery" placeholder="Search by name or e-mail" aria-label="Search by name or e-mail" autocomplete="off" autofocus />
+                </div>
             </div>
         </div>
 
@@ -91,11 +93,34 @@
             const rowSelectors = document.querySelectorAll(".row-selector");
             const selectionActions = document.querySelectorAll(".toolbar-selection-action");
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const usersSearchQuery = document.getElementById("usersSearchQuery");
             const getUniqIdValue = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            let searchDebounceId;
 
             [...tooltipTriggerList].forEach(element => {
                 new bootstrap.Tooltip(element);
             });
+
+            if (usersSearchQuery) {
+                usersSearchQuery.focus();
+                const searchQueryLength = usersSearchQuery.value.length;
+                usersSearchQuery.setSelectionRange(searchQueryLength, searchQueryLength);
+
+                usersSearchQuery.addEventListener("input", () => {
+                    window.clearTimeout(searchDebounceId);
+                    searchDebounceId = window.setTimeout(() => {
+                        const nextValue = usersSearchQuery.value.trim();
+                        const currentUrl = new URL(window.location.href);
+                        if (nextValue.length === 0) {
+                            currentUrl.searchParams.delete("searchQuery");
+                        } else {
+                            currentUrl.searchParams.set("searchQuery", nextValue);
+                        }
+
+                        window.location.assign(`${currentUrl.pathname}${currentUrl.search}`);
+                    }, 350);
+                });
+            }
 
             if (!selectAll) {
                 return;

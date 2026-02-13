@@ -4,6 +4,8 @@ public class UserManagementViewModel
 {
     public required IReadOnlyList<UserListItemViewModel> Users { get; init; }
 
+    public string SearchQuery { get; init; } = string.Empty;
+
     public int TotalUsers { get; init; }
 
     public int ActiveUsers { get; init; }

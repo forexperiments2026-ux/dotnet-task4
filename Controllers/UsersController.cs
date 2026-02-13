@@ -13,7 +13,7 @@ namespace Task4.Controllers;
 public class UsersController(AppDbContext dbContext) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? searchQuery)
     {
         var redirect = await ValidateCurrentUserAccessAsync();
         if (redirect is not null)
@@ -21,8 +21,17 @@ public class UsersController(AppDbContext dbContext) : Controller
             return redirect;
         }
 
-        var users = await dbContext.Users
-            .AsNoTracking()
+        var normalizedSearchQuery = searchQuery?.Trim() ?? string.Empty;
+
+        var usersQuery = dbContext.Users.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(normalizedSearchQuery))
+        {
+            usersQuery = usersQuery.Where(x =>
+                EF.Functions.ILike(x.Name, $"%{normalizedSearchQuery}%")
+                || EF.Functions.ILike(x.Email, $"%{normalizedSearchQuery}%"));
+        }
+
+        var users = await usersQuery
             .OrderByDescending(x => x.LastLoginAt)
             .ThenBy(x => x.Id)
             .Select(x => new UserListItemViewModel
@@ -39,6 +48,7 @@ public class UsersController(AppDbContext dbContext) : Controller
         var model = new UserManagementViewModel
         {
             Users = users,
+            SearchQuery = normalizedSearchQuery,
             TotalUsers = users.Count,
             ActiveUsers = users.Count(u => u.Status == "active"),
             BlockedUsers = users.Count(u => u.Status == "blocked"),
@@ -50,7 +60,7 @@ public class UsersController(AppDbContext dbContext) : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Index(string operation, List<long>? selectedIds)
+    public async Task<IActionResult> Index(string operation, List<long>? selectedIds, string? searchQuery)
     {
         var redirect = await ValidateCurrentUserAccessAsync();
         if (redirect is not null)
@@ -68,7 +78,7 @@ public class UsersController(AppDbContext dbContext) : Controller
                 if (ids.Count == 0)
                 {
                     TempData["StatusError"] = "Select at least one user to block.";
-                    return RedirectToAction(nameof(Index));
+                    return RedirectToAction(nameof(Index), new { searchQuery });
                 }
 
                 affected = await dbContext.Users
@@ -81,7 +91,7 @@ public class UsersController(AppDbContext dbContext) : Controller
                 if (ids.Count == 0)
                 {
                     TempData["StatusError"] = "Select at least one user to unblock.";
-                    return RedirectToAction(nameof(Index));
+                    return RedirectToAction(nameof(Index), new { searchQuery });
                 }
 
                 affected = await dbContext.Users
@@ -94,7 +104,7 @@ public class UsersController(AppDbContext dbContext) : Controller
                 if (ids.Count == 0)
                 {
                     TempData["StatusError"] = "Select at least one user to delete.";
-                    return RedirectToAction(nameof(Index));
+                    return RedirectToAction(nameof(Index), new { searchQuery });
                 }
 
                 affected = await dbContext.Users
@@ -115,7 +125,7 @@ public class UsersController(AppDbContext dbContext) : Controller
                 break;
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchQuery });
     }
 
     private async Task<User?> GetCurrentUserAsync()
