@@ -1,17 +1,28 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
+using Task4.Configuration;
 using Task4.Data;
 using Task4.Data.Models;
 using Task4.Models;
+using Task4.Services;
 
 namespace Task4.Controllers;
 
-public class AccountController(AppDbContext dbContext, IPasswordHasher<User> passwordHasher) : Controller
+public class AccountController(
+    AppDbContext dbContext,
+    IPasswordHasher<User> passwordHasher,
+    IBackgroundEmailQueue backgroundEmailQueue,
+    IOptions<EmailConfirmationOptions> emailConfirmationOptions,
+    ILogger<AccountController> logger) : Controller
 {
     [HttpGet]
     [AllowAnonymous]
@@ -142,9 +153,88 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
             return View(model);
         }
 
+        var confirmationTokenValue = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var confirmationToken = new EmailConfirmationToken
+        {
+            UserId = user.Id,
+            TokenHash = ComputeTokenHash(confirmationTokenValue),
+            ExpiresAt = DateTime.UtcNow.AddHours(Math.Max(1, emailConfirmationOptions.Value.TokenLifetimeHours)),
+            CreatedAt = DateTime.UtcNow
+        };
+        dbContext.EmailConfirmationTokens.Add(confirmationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogError(ex, "Failed to store e-mail confirmation token for user {UserId}.", user.Id);
+            TempData["StatusError"] = "Registration completed, but confirmation token creation failed.";
+            await SignInUserAsync(user, false);
+            return RedirectToAction("Index", "Users");
+        }
+
+        var confirmationLink = Url.Action(nameof(ConfirmEmail), "Account", new { token = confirmationTokenValue }, Request.Scheme);
+        if (!string.IsNullOrWhiteSpace(confirmationLink))
+        {
+            await backgroundEmailQueue.EnqueueAsync(
+                new EmailWorkItem(
+                    user.Email,
+                    "Confirm your e-mail",
+                    BuildEmailConfirmationBody(user.Name, confirmationLink)));
+        }
+        else
+        {
+            logger.LogError("Failed to generate e-mail confirmation link for user {UserId}.", user.Id);
+            TempData["StatusError"] = "Registration completed, but confirmation link generation failed.";
+            await SignInUserAsync(user, false);
+            return RedirectToAction("Index", "Users");
+        }
+
         await SignInUserAsync(user, false);
         TempData["StatusSuccess"] = "Registration completed. Confirmation e-mail is queued and will be sent asynchronously.";
         return RedirectToAction("Index", "Users");
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> ConfirmEmail(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            TempData["StatusError"] = "Confirmation link is invalid.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        var tokenHash = ComputeTokenHash(token);
+        var tokenEntity = await dbContext.EmailConfirmationTokens
+            .Include(x => x.User)
+            .SingleOrDefaultAsync(x => x.TokenHash == tokenHash);
+
+        if (tokenEntity is null || tokenEntity.UsedAt.HasValue || tokenEntity.ExpiresAt < DateTime.UtcNow)
+        {
+            TempData["StatusError"] = "Confirmation link is invalid or expired.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        tokenEntity.UsedAt = DateTime.UtcNow;
+        if (tokenEntity.User.Status == UserStatus.unverified)
+        {
+            tokenEntity.User.Status = UserStatus.active;
+            TempData["StatusSuccess"] = "E-mail confirmed successfully.";
+        }
+        else if (tokenEntity.User.Status == UserStatus.blocked)
+        {
+            TempData["StatusSuccess"] = "E-mail confirmed. Account remains blocked.";
+        }
+        else
+        {
+            TempData["StatusSuccess"] = "E-mail is already confirmed.";
+        }
+
+        await dbContext.SaveChangesAsync();
+        return RedirectToAction(nameof(Login));
     }
 
     private async Task<User?> GetCurrentUserAsync()
@@ -185,5 +275,24 @@ public class AccountController(AppDbContext dbContext, IPasswordHasher<User> pas
                 IsPersistent = isPersistent,
                 AllowRefresh = true
             });
+    }
+
+    private static string ComputeTokenHash(string token)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(hash);
+    }
+
+    private static string BuildEmailConfirmationBody(string userName, string confirmationLink)
+    {
+        var encodedName = System.Net.WebUtility.HtmlEncode(userName);
+        var encodedLink = System.Net.WebUtility.HtmlEncode(confirmationLink);
+
+        return $"""
+            <p>Hello, {encodedName}.</p>
+            <p>Please confirm your e-mail by clicking the link below:</p>
+            <p><a href="{encodedLink}">{encodedLink}</a></p>
+            <p>If you did not register, ignore this message.</p>
+            """;
     }
 }

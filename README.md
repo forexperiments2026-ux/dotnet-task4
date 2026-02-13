@@ -27,7 +27,9 @@ docker compose up --build
 
 После запуска:
 - приложение: `http://localhost:8080`
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5433`
+- SMTP (Mailpit): `localhost:1025`
+- Mailpit Web UI: `http://localhost:8025`
 
 Остановка:
 
@@ -40,3 +42,21 @@ docker compose down
 ```bash
 docker compose down -v
 ```
+
+## Применение обновления БД для существующего volume
+
+`docker-entrypoint-initdb.d` выполняется только при первой инициализации БД.  
+Если volume уже существует, примените SQL вручную:
+
+```bash
+docker compose exec -T db psql -U app_user -d app_db < docker/postgres/migrations/02-email-confirmation.sql
+```
+
+## Проверка подтверждения e-mail
+
+1. Зарегистрируйте нового пользователя в приложении.
+2. Откройте `http://localhost:8025`.
+3. Входящее письмо содержит ссылку подтверждения `ConfirmEmail`.
+4. После перехода по ссылке:
+   - статус `unverified` меняется на `active`;
+   - статус `blocked` остается `blocked`.

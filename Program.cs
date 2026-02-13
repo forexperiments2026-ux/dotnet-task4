@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Task4.Configuration;
 using Task4.Data;
 using Task4.Data.Models;
 using Task4.Middleware;
 using Task4.Models;
+using Task4.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,11 @@ builder.Services.AddAuthentication(AppAuthConstants.Scheme)
         options.SlidingExpiration = true;
     });
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.Configure<EmailConfirmationOptions>(builder.Configuration.GetSection("EmailConfirmation"));
+builder.Services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
+builder.Services.AddHostedService<QueuedEmailSenderService>();
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
